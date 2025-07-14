@@ -13,8 +13,9 @@ import java.util.List;
 public class RoutingTablePersistence {
 
     // 每个节点记录的固定长度 (20字节ID + 4字节IPv4 + 2字节端口)
-    private static final int NODE_RECORD_LENGTH = 26;
-
+    private static final int NODE_RECORD_LENGTH = RoutingTable.ID_LENGTH_BYTES
+            + RoutingTable.IPV4_LENGTH_BYTES
+            + RoutingTable.PORT_LENGTH_BYTES;
     private final File storageFile;
 
     public RoutingTablePersistence(File storageFile) {
@@ -40,10 +41,10 @@ public class RoutingTablePersistence {
         try (DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(storageFile)))) {
             for (Node node : nodes) {
                 // 1. 写入 20 字节的 Node ID
-                dos.write(node.nodeId());
+                dos.write(node.getNodeId());
 
                 // 2. 写入 4 字节的 IP 地址
-                byte[] ipBytes = InetAddress.getByName(node.ip()).getAddress();
+                byte[] ipBytes = node.getAddress().getAddress();
                 if (ipBytes.length != 4) {
                     // 只处理 IPv4，跳过其他格式
                     log.warn("Skipping non-IPv4 node during save: {}", node);
@@ -52,7 +53,7 @@ public class RoutingTablePersistence {
                 dos.write(ipBytes);
 
                 // 3. 写入 2 字节的端口
-                dos.writeShort(node.port());
+                dos.writeShort(node.getPort());
             }
             dos.flush();
             log.info("Successfully saved {} nodes to {}", nodes.size(), storageFile.getAbsolutePath());
@@ -82,10 +83,10 @@ public class RoutingTablePersistence {
         try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new FileInputStream(storageFile)))) {
             while (dis.available() > 0) {
                 // 1. 读取 20 字节的 Node ID
-                byte[] nodeId = dis.readNBytes(NODE_RECORD_LENGTH - 6); // Node ID is 20 bytes
+                byte[] nodeId = dis.readNBytes(RoutingTable.ID_LENGTH_BYTES); // Node ID is 20 bytes
 
                 // 2. 读取 4 字节的 IP 地址
-                byte[] ipBytes = dis.readNBytes(4);
+                byte[] ipBytes = dis.readNBytes(RoutingTable.IPV4_LENGTH_BYTES);
                 String ip = InetAddress.getByAddress(ipBytes).getHostAddress();
 
                 // 3. 读取 2 字节的端口
