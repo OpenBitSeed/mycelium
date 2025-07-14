@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,10 +42,10 @@ public class RoutingTablePersistence {
         try (DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(storageFile)))) {
             for (Node node : nodes) {
                 // 1. 写入 20 字节的 Node ID
-                dos.write(node.getNodeId());
+                dos.write(node.nodeId());
 
                 // 2. 写入 4 字节的 IP 地址
-                byte[] ipBytes = node.getAddress().getAddress();
+                byte[] ipBytes = node.getIp().getAddress();
                 if (ipBytes.length != 4) {
                     // 只处理 IPv4，跳过其他格式
                     log.warn("Skipping non-IPv4 node during save: {}", node);
@@ -93,7 +94,7 @@ public class RoutingTablePersistence {
                 int port = dis.readUnsignedShort();
 
                 // 创建 Node 对象 (lastSeen 设为当前时间，因为我们不知道上次的时间)
-                loadedNodes.add(new Node(nodeId, ip, port, System.currentTimeMillis()));
+                loadedNodes.add(new Node(nodeId, new InetSocketAddress(ip,port), System.currentTimeMillis()));
             }
             log.info("Successfully loaded {} nodes from {}", loadedNodes.size(), storageFile.getAbsolutePath());
             return loadedNodes;

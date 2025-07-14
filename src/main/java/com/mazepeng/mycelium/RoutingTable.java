@@ -39,7 +39,7 @@ public class RoutingTable {
     public void addNode(Node node) {
         if (node.equals(selfNode)) return;
 
-        int index = getBucketIndex(node.getNodeId());
+        int index = getBucketIndex(node.nodeId());
         KBucket bucket = buckets[index];
 
         // 如果节点已存在，更新它
@@ -61,7 +61,7 @@ public class RoutingTable {
      * @param node 响应了 PING 的节点。
      */
     public void nodeResponded(Node node) {
-        int index = getBucketIndex(node.getNodeId());
+        int index = getBucketIndex(node.nodeId());
         if (index < 0) return;
         buckets[index].addNode(node.touch());
     }
@@ -71,7 +71,7 @@ public class RoutingTable {
      * @param node 未响应 PING 的节点。
      */
     public void nodeTimedOut(Node node) {
-        int index = getBucketIndex(node.getNodeId());
+        int index = getBucketIndex(node.nodeId());
         if (index < 0) return;
         buckets[index].removeNode(node);
     }
@@ -87,7 +87,7 @@ public class RoutingTable {
                 .flatMap(bucket -> {
                     List<Node> nodesInBucket = new ArrayList<>();
                     bucket.forEachUntil(node -> {
-                        if ((now - node.getLastSeen()) > inactivityThresholdMillis) {
+                        if ((now - node.lastSeen()) > inactivityThresholdMillis) {
                             nodesInBucket.add(node);
                             return true;
                         } else {
@@ -100,7 +100,7 @@ public class RoutingTable {
     }
 
     public List<Node> findClosestNodes(byte[] targetId, int count) {
-        var distanceComparator = Comparator.comparing((Node n) -> getDistance(n.getNodeId(), targetId));
+        var distanceComparator = Comparator.comparing((Node n) -> getDistance(n.nodeId(), targetId));
         return Stream.of(this.buckets)
                 .flatMap(bucket -> bucket.getAllNodes().stream())
                 .sorted(distanceComparator)
@@ -113,7 +113,7 @@ public class RoutingTable {
     }
 
     private int getBucketIndex(byte[] remoteNodeId) {
-        var distance = getDistance(selfNode.getNodeId(), remoteNodeId);
+        var distance = getDistance(selfNode.nodeId(), remoteNodeId);
         if (distance.equals(BigInteger.ZERO)) return 0;
         int index = distance.bitLength() - 1;
         return Math.max(index, 0);

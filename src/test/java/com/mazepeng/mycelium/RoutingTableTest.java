@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.List;
 
@@ -50,11 +51,11 @@ class RoutingTableTest {
         Node existingNode = createRandomNode();
         routingTable.addNode(existingNode);
 
-        long firstSeen = getNodeFromTable(existingNode).getLastSeen();
+        long firstSeen = getNodeFromTable(existingNode).lastSeen();
         Thread.sleep(10); // 等待一小段时间以确保时间戳不同
 
         routingTable.addNode(existingNode); // 再次添加同一个节点
-        long secondSeen = getNodeFromTable(existingNode).getLastSeen();
+        long secondSeen = getNodeFromTable(existingNode).lastSeen();
 
         assertEquals(1, routingTable.getAllNodes().size(), "Should still only be one node in the table");
         assertTrue(secondSeen > firstSeen, "lastSeen timestamp should have been updated");
@@ -67,13 +68,13 @@ class RoutingTableTest {
         int bucketIndex = 10;
         // 创建 K 个节点，它们的ID经过精心设计，都落在同一个桶里
         for (int i = 0; i < K; i++) {
-            Node node = createNodeForBucket(selfNode.getNodeId(), bucketIndex);
+            Node node = createNodeForBucket(selfNode.nodeId(), bucketIndex);
             routingTable.addNode(node);
         }
         assertEquals(K, routingTable.getAllNodes().size(), "Bucket should be full with K nodes");
 
         // 创建第 K+1 个节点，它也属于这个桶
-        Node extraNode = createNodeForBucket(selfNode.getNodeId(), bucketIndex);
+        Node extraNode = createNodeForBucket(selfNode.nodeId(), bucketIndex);
         routingTable.addNode(extraNode);
 
         // 验证新节点被忽略
@@ -87,11 +88,11 @@ class RoutingTableTest {
         Node node = createRandomNode();
         routingTable.addNode(node);
 
-        long firstSeen = getNodeFromTable(node).getLastSeen();
+        long firstSeen = getNodeFromTable(node).lastSeen();
         Thread.sleep(10);
 
         routingTable.nodeResponded(node);
-        long secondSeen = getNodeFromTable(node).getLastSeen();
+        long secondSeen = getNodeFromTable(node).lastSeen();
 
         assertTrue(secondSeen > firstSeen, "nodeResponded should update the lastSeen timestamp");
     }
@@ -125,7 +126,7 @@ class RoutingTableTest {
         // 验证返回的列表是按距离升序排列的
         BigInteger previousDistance = BigInteger.valueOf(-1);
         for (Node node : closestNodes) {
-            BigInteger currentDistance = RoutingTable.getDistance(targetId, node.getNodeId());
+            BigInteger currentDistance = RoutingTable.getDistance(targetId, node.nodeId());
             assertTrue(currentDistance.compareTo(previousDistance) >= 0, "Nodes should be sorted by distance");
             previousDistance = currentDistance;
         }
@@ -137,11 +138,11 @@ class RoutingTableTest {
         long inactivityThreshold = 50; // 50ms
 
         // 添加一个“旧”节点
-        Node oldNode = new Node(generateRandomId(), "1.1.1.1", 1111, System.currentTimeMillis() - 100);
+        Node oldNode = new Node(generateRandomId(), new InetSocketAddress("1.1.1.1", 1111), System.currentTimeMillis() - 100);
         routingTable.addNode(oldNode);
 
         // 添加一个“新”节点
-        Node newNode = new Node(generateRandomId(), "2.2.2.2", 2222, System.currentTimeMillis());
+        Node newNode = new Node(generateRandomId(), new InetSocketAddress("2.2.2.2", 2222), System.currentTimeMillis());
         routingTable.addNode(newNode);
 
         // 在阈值生效前等待
@@ -163,7 +164,7 @@ class RoutingTableTest {
     }
 
     private Node createRandomNode() {
-        return new Node(generateRandomId(), "127.0.0.1", 1234, System.currentTimeMillis());
+        return new Node(generateRandomId(), new InetSocketAddress("127.0.0.1", 1234), System.currentTimeMillis());
     }
 
     /**
@@ -185,7 +186,7 @@ class RoutingTableTest {
         System.arraycopy(targetIdBytes, 0, finalIdBytes,
                 finalIdBytes.length - targetIdBytes.length, targetIdBytes.length);
 
-        return new Node(finalIdBytes, "127.0.0.1", 5678, System.currentTimeMillis());
+        return new Node(finalIdBytes, new InetSocketAddress("127.0.0.1", 5678), System.currentTimeMillis());
     }
 
     /**
