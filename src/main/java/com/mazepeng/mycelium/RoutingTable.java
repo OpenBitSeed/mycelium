@@ -16,6 +16,8 @@ import java.util.stream.Stream;
 public class RoutingTable {
     public static final int ID_LENGTH_BITS = 160;
     public static final int ID_LENGTH_BYTES = 20;
+    public static final int IPV4_LENGTH_BYTES = 4;
+    public static final int PORT_LENGTH_BYTES = 2;
 
     private final Node selfNode;
     private final int k;
@@ -37,7 +39,7 @@ public class RoutingTable {
     public void addNode(Node node) {
         if (node.equals(selfNode)) return;
 
-        int index = getBucketIndex(node.nodeId());
+        int index = getBucketIndex(node.getNodeId());
         KBucket bucket = buckets[index];
 
         // 如果节点已存在，更新它
@@ -59,7 +61,7 @@ public class RoutingTable {
      * @param node 响应了 PING 的节点。
      */
     public void nodeResponded(Node node) {
-        int index = getBucketIndex(node.nodeId());
+        int index = getBucketIndex(node.getNodeId());
         if (index < 0) return;
         buckets[index].addNode(node.touch());
     }
@@ -69,7 +71,7 @@ public class RoutingTable {
      * @param node 未响应 PING 的节点。
      */
     public void nodeTimedOut(Node node) {
-        int index = getBucketIndex(node.nodeId());
+        int index = getBucketIndex(node.getNodeId());
         if (index < 0) return;
         buckets[index].removeNode(node);
     }
@@ -79,20 +81,26 @@ public class RoutingTable {
      * @return 需要检查的节点列表。
      */
     public List<Node> getNodesForHealthCheck(long inactivityThresholdMillis) {
-        List<Node> nodesToCheck = new ArrayList<>();
         final long now = System.currentTimeMillis();
-
-        for (KBucket bucket : buckets) {
-            Node oldest = bucket.getOldestNode();
-            if (oldest != null && (now - oldest.lastSeen()) > inactivityThresholdMillis) {
-                nodesToCheck.add(oldest);
-            }
-        }
-        return nodesToCheck;
+        return Stream.of(this.buckets)
+                .parallel()
+                .flatMap(bucket -> {
+                    List<Node> nodesInBucket = new ArrayList<>();
+                    bucket.forEachUntil(node -> {
+                        if ((now - node.getLastSeen()) > inactivityThresholdMillis) {
+                            nodesInBucket.add(node);
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    });
+                    return nodesInBucket.stream();
+                })
+                .collect(Collectors.toList());
     }
 
     public List<Node> findClosestNodes(byte[] targetId, int count) {
-        var distanceComparator = Comparator.comparing((Node n) -> getDistance(n.nodeId(), targetId));
+        var distanceComparator = Comparator.comparing((Node n) -> getDistance(n.getNodeId(), targetId));
         return Stream.of(this.buckets)
                 .flatMap(bucket -> bucket.getAllNodes().stream())
                 .sorted(distanceComparator)
@@ -105,7 +113,7 @@ public class RoutingTable {
     }
 
     private int getBucketIndex(byte[] remoteNodeId) {
-        var distance = getDistance(selfNode.nodeId(), remoteNodeId);
+        var distance = getDistance(selfNode.getNodeId(), remoteNodeId);
         if (distance.equals(BigInteger.ZERO)) return 0;
         int index = distance.bitLength() - 1;
         return Math.max(index, 0);
