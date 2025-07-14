@@ -3,7 +3,6 @@ package com.mazepeng.mycelium.model;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 
 /**
