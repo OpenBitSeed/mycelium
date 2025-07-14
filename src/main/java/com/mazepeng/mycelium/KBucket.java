@@ -4,6 +4,7 @@ import com.mazepeng.mycelium.model.Node;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class KBucket {
     private final int k;
@@ -12,6 +13,18 @@ public class KBucket {
     public KBucket(int k) {
         this.k = k;
         this.nodes = new LinkedList<>();
+    }
+
+    public void forEachUntil(Predicate<Node> predicate) {
+        synchronized (this.nodes) {
+            // 从队首（最老的）开始遍历
+            for (Node node : this.nodes) {
+                if (!predicate.test(node)) {
+                    // 一旦 predicate 返回 false，立即中断循环
+                    break;
+                }
+            }
+        }
     }
 
     /**
