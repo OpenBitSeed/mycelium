@@ -1,26 +1,44 @@
 package com.mazepeng.mycelium.model;
 
 import com.mazepeng.mycelium.RoutingTable;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 
 /**
  * 代表DHT网络中的一个节点。
- * 使用Java 21的 record 定义，它是一个不可变的数据载体。
  *
- * @param nodeId   节点的20字节ID
- * @param ip       节点的IP地址
- * @param port     节点的端口
- * @param lastSeen 最后一次见到该节点的时间戳
  */
-public record Node(byte[] nodeId, String ip, int port, long lastSeen) {
+@Getter
+public final class Node {
+
+    private final byte[] nodeId;
+    private final InetAddress address; // 使用 InetAddress 存储 IP
+    private final int port;
+    private final long lastSeen;
 
     // 使用紧凑构造函数进行参数校验
-    public Node {
-        if (nodeId == null || nodeId.length != RoutingTable.ID_LENGTH_BYTES) {
-            throw new IllegalArgumentException("节点ID必须是 " + RoutingTable.ID_LENGTH_BYTES + " 字节");
+    public Node(byte[] nodeId, String ip, int port, long lastSeen) {
+        // ... id 校验 ...
+        this.nodeId = nodeId;
+        try {
+            this.address = InetAddress.getByName(ip);
+        } catch (UnknownHostException e) {
+            throw new IllegalArgumentException("Invalid IP address or hostname: " + ip, e);
         }
+        this.port = port;
+        this.lastSeen = lastSeen;
+    }
+
+    private Node(byte[] nodeId, InetAddress address, int port, long lastSeen) {
+        this.nodeId = nodeId;
+        this.address = address;
+        this.port = port;
+        this.lastSeen = lastSeen;
     }
 
     /**
@@ -28,7 +46,7 @@ public record Node(byte[] nodeId, String ip, int port, long lastSeen) {
      * @return 一个新的、带有当前时间戳的 Node 实例。
      */
     public Node touch() {
-        return new Node(this.nodeId, this.ip, this.port, System.currentTimeMillis());
+        return new Node(this.nodeId, this.address, this.port, System.currentTimeMillis());
     }
 
     // record 对数组默认使用引用相等，我们必须重写它以比较内容。
@@ -48,6 +66,6 @@ public record Node(byte[] nodeId, String ip, int port, long lastSeen) {
     @Override
     public String toString() {
         String hexId = new BigInteger(1, this.nodeId).toString(16);
-        return String.format("Node{id=%s, addr='%s:%d'}", hexId, ip, port);
+        return String.format("Node{id=%s, addr='%s:%d'}", hexId, address.getHostAddress(), port);
     }
 }
