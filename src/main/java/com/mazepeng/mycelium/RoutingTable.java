@@ -31,6 +31,18 @@ public class RoutingTable {
             buckets[i] = new KBucket(k);
         }
     }
+    public byte[] getSelfNodeId() {
+        return selfNode.nodeId();
+    }
+
+    public List<Node> getRecentNodes(int limit) {
+        return Stream.of(this.buckets)
+                .flatMap(bucket -> bucket.getAllNodes().stream())
+                .sorted(Comparator.comparingLong(Node::lastSeen).reversed())
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
 
     /**
      * 尝试添加一个节点。如果桶已满，新节点将被忽略。
