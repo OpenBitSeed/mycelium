@@ -7,6 +7,12 @@
     <groupId>com.mazepeng</groupId>
     <artifactId>mycelium</artifactId>
     <version>0.0.1</version>
+
+    <name>mycelium</name>
+    <description>DHT routing library</description>
+    <url>https://github.com/OpenBitSeed/mycelium</url>
+
+
     <licenses>
         <license>
             <name>MIT License</name>
